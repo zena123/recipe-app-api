@@ -6,6 +6,7 @@ from rest_framework.test import APIClient
 from rest_framework import status
 
 CREATE_USER_URL = reverse("user:create")
+TOKEN_URL = reverse('user:token')
 
 
 def create_user(**params):  # list of params
@@ -50,3 +51,33 @@ class PublicUserApiTests(TestCase):
         # also we will make sure user not already exist
         user_exists = get_user_model().objects.filter(email=payload['email']).exists()
         self.assertFalse(user_exists)
+
+    def test_create_token_valid_credentials(self):
+        """test token is created for a user"""
+        payload = {'email': 'test@gmail.com', 'password': 'password'}
+        create_user(**payload)
+        res = self.client.post(TOKEN_URL, payload)
+        # check token key exists, will trust token is working cause django and DRF has it's own test suite for that
+        self.assertIn('token', res.data)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+    def test_create_token_invalid_credentials(self):
+        """ test token not created with invalid credentials"""
+        create_user(email="test@gmail.com", password="testpass")
+        payload = {'email': 'test@gmail.com', 'password': 'testpass1'}
+        res = self.client.post(TOKEN_URL, payload)
+        self.assertNotIn('token', res.data)
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_token_no_user(self):
+        """test creating a token with no user invalid"""
+        payload = {'email': 'test@gmail.com', 'password': 'testpass1'}
+        res = self.client.post(TOKEN_URL, payload)
+        self.assertNotIn('token', res.data)
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_token_missing_field(self):
+        """ test creating token with missing data fails"""
+        res = self.client.post(TOKEN_URL, {'email': 'one@gmail.com', 'password': ''})
+        self.assertNotIn('token', res.data)
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
