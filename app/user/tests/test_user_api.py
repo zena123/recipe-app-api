@@ -94,7 +94,7 @@ class PrivateUserAPITests(TestCase):
     """ Test Api requests that requires authentication"""
 
     def setUp(self):
-        user = create_user(
+        self.user = create_user(
             email='test@gmail.com',
             password='test',
             name='testuser',
@@ -123,6 +123,5 @@ class PrivateUserAPITests(TestCase):
         self.user.refresh_from_db()
         self.assertEqual(self.user.name, payload['name'])
         self.assertTrue(self.user.check_password(payload['password']))
-
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
