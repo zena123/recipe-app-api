@@ -39,10 +39,10 @@ class PrivateTagsAPITests(TestCase):
         Tag.objects.create(user=self.user, name="zozo")
         Tag.objects.create(user=self.user, name="Alabama")
         res = self.client.get(TAGS_URL)
-        tags = Tag.objects.all()
+        tags = Tag.objects.all().order_by('name')
         serializer = TagSerializer(tags, many=True)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(res.data), 2)
+        self.assertEqual(res.data, serializer.data)
 
     def test_tags_limited_to_user(self):
         """test returned tags are only for authenticated user"""
@@ -59,7 +59,7 @@ class PrivateTagsAPITests(TestCase):
         self.assertEqual(res.data[0]['name'], tag.name)
 
     def test_create_tag_successful(self):
-        """"test creatinh a new tag"""
+        """"test creating a new tag"""
         payload = {'name': 'test_tag'}
         self.client.post(TAGS_URL, payload)
         exists = Tag.objects.filter(
