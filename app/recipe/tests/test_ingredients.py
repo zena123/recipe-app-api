@@ -14,7 +14,6 @@ INGREDIENT_URL = reverse('recipe:ingredient-list')
 class PublicIngredientAPITests(TestCase):
 
     def setUp(self):
-        self.user = get_user_model()
         self.client = APIClient()
 
     def test_login_required(self):
