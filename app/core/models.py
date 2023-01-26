@@ -58,3 +58,22 @@ class Ingredient(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Recipe(models.Model):
+    """ Recipe model"""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE  # user deleted => all recipes of that user deleted
+    )
+    title = models.CharField(max_length=255)
+    time_minutes = models.PositiveIntegerField()
+    price = models.DecimalField(max_digits=5, decimal_places=2)
+    # blank make it optional, null=True will add more complexity to be checked ( value or non), blank only blank
+    link = models.CharField(max_length=255, blank=True)
+    # if we add the model without '', ex"Ingredient", make sure to have it above current model
+    ingredients = models.ManyToManyField('Ingredient')
+    tags = models.ManyToManyField('Tag')
+
+    def __str__(self):
+        return self.title
