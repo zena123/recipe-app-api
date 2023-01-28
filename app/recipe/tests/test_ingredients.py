@@ -8,7 +8,7 @@ from rest_framework.test import APIClient
 from core.models import Ingredient
 from recipe.serializers import IngredientSerializer
 
-INGREDIENT_URL = reverse('recipe:ingredient-list')
+INGREDIENT_URL = reverse('recipe:ingredient-list') # ingredient not ingredients
 
 
 class PublicIngredientAPITests(TestCase):
