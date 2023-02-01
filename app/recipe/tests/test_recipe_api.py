@@ -152,3 +152,54 @@ class PrivateRecipeAPITests(TestCase):
         self.assertEqual(ingredients.count(), 2)
         self.assertIn(ingredient1, ingredients)
         self.assertIn(ingredient2, ingredients)
+
+
+
+    """ note , update already comes out of the box with django , 
+    this feature implemented , no need to test it, 
+    this code added just to fully cover our implemented features"""
+    def test_partial_update_recipe(self):
+        """test update a recipe with patch"""
+        recipe = sample_recipe(user=self.user)
+        recipe.tags.add(sample_tag(user=self.user))
+        new_tag = sample_tag(user=self.user, name="nice!" )
+        payload = {
+            "title": "new chicken recipe",
+            "tags": [new_tag.id]
+        }
+        url = detail_url(recipe.pk)
+        self.client.patch(url, payload)
+
+        # refresh from db important , values won't be retrieved as updated without it
+        # VERY important in Postgresql
+        recipe.refresh_from_db()
+
+        self.assertEqual(recipe.title, payload['title'])
+        tags = recipe.tags.all()
+        self.assertEqual(len(tags), 1)
+        self.assertIn(new_tag, tags)
+
+    def test_full_update_recipe(self):
+        """test updating with put"""
+        # note: put will replace the object in db fully with the one provided in request
+
+        recipe = sample_recipe(user=self.user)
+        recipe.tags.add(sample_tag(user=self.user))
+        payload = {
+            "title": "kebba",
+            "time_minutes": 30,
+            "price": 13.0,
+        }
+        url = detail_url(recipe.pk)
+        self.client.put(url, payload)
+
+        recipe.refresh_from_db()
+        self.assertEqual(recipe.title, payload['title'])
+        self.assertEqual(recipe.time_minutes, payload['time_minutes'])
+        self.assertEqual(recipe.price, payload['price'])
+        tags = recipe.tags.all()
+        self.assertEqual(len(tags), 0)
+
+
+
+
