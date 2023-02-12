@@ -1,3 +1,6 @@
+import tempfile
+import os
+from PIL import Image
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.test import TestCase
@@ -9,6 +12,11 @@ from core.models import Recipe, Tag, Ingredient
 from recipe.serializers import RecipeSerializer, RecipeDetailSerializer
 
 RECIPE_URL = reverse('recipe:recipe-list')
+
+
+def image_upload_url(recipe_id):
+    """ return url for recipe image upload"""
+    return reverse('recipe:recipe-upload-image', args=[recipe_id])
 
 
 def detail_url(recipe_id):
@@ -153,16 +161,15 @@ class PrivateRecipeAPITests(TestCase):
         self.assertIn(ingredient1, ingredients)
         self.assertIn(ingredient2, ingredients)
 
-
-
     """ note , update already comes out of the box with django , 
     this feature implemented , no need to test it, 
     this code added just to fully cover our implemented features"""
+
     def test_partial_update_recipe(self):
         """test update a recipe with patch"""
         recipe = sample_recipe(user=self.user)
         recipe.tags.add(sample_tag(user=self.user))
-        new_tag = sample_tag(user=self.user, name="nice!" )
+        new_tag = sample_tag(user=self.user, name="nice!")
         payload = {
             "title": "new chicken recipe",
             "tags": [new_tag.id]
@@ -201,5 +208,39 @@ class PrivateRecipeAPITests(TestCase):
         self.assertEqual(len(tags), 0)
 
 
+class RecipeImageUploadTests(TestCase):
 
+    def setUp(self):
+        self.client = APIClient()
+        self.user = get_user_model().objects.create(
+            email='test@gmail.com',
+            password="pass124"
+        )
+        self.client.force_authenticate(self.user)
+        self.recipe = sample_recipe(user=self.user)
 
+    def tearDown(self):
+        """remove created files so it won't remain in filesystem"""
+        self.recipe.image.delete()
+
+    def test_upload_image_to_recipe(self):
+        """test uploading an image to recipe"""
+        url = image_upload_url(self.recipe.id)
+        with tempfile.NamedTemporaryFile(suffix='.jpg') as ntf:  # suffix is extension we wanna use
+            img = Image.new('RGB', (10, 10))
+            img.save(ntf, format='JPEG') # save image in ntf with jpeg format
+            ntf.seek(0) # set the pointer back to the beginning of that file
+            # tell django we wanna make multipart form request
+            # which means a form that consists of data, by default it actually consist of json object
+            res = self.client.post(url, {'image': ntf}, format='multipart')
+
+        self.recipe.refresh_from_db()
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('image', res.data)
+        self.assertTrue(os.path.exists(self.recipe.image.path))
+
+    def test_upload_image_bad_request(self):
+        """test uploading an invalid image"""
+        url = image_upload_url(self.recipe.id)
+        res = self.client.post(url, {'image': 'not_image_data'}, format='multipart')
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)

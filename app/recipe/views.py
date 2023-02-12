@@ -1,4 +1,6 @@
-from rest_framework import viewsets, mixins
+from rest_framework.decorators import action
+from rest_framework.response import  Response
+from rest_framework import viewsets, mixins, status
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 
@@ -8,12 +10,15 @@ from .serializers import (
     IngredientSerializer,
     RecipeSerializer,
     RecipeDetailSerializer,
+    RecipeImageSerializer,
 )
 
 
-class BaseRecipeAttrViewSet(viewsets.GenericViewSet,
-                            mixins.ListModelMixin,
-                            mixins.CreateModelMixin):
+class BaseRecipeAttrViewSet(
+    viewsets.GenericViewSet,
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin
+):
     """" base ViewSet for user owned recipe attribute"""
     authentication_classes = (TokenAuthentication,)
     permission_classes = (IsAuthenticated,)
@@ -53,8 +58,30 @@ class RecipeViewSet(viewsets.ModelViewSet):
         """return the appropriate serializer"""
         if self.action == 'retrieve':
             return RecipeDetailSerializer
+        elif self.action == 'upload_image':
+            return RecipeImageSerializer
         return self.serializer_class
 
     def perform_create(self, serializer):
         """create new recipe & assign it to current user"""
         serializer.save(user=self.request.user)
+
+    # detail=True: means this action will be for details <=> specific recipe
+    @action(methods=['POST'], detail=True, url_path="upload-image")
+    def upload_image(self, request, pk=None):
+        recipe = self.get_object()
+        serializer = self.get_serializer(
+            recipe,
+            data=request.data,
+        )
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                serializer.data,
+                status=status.HTTP_200_OK
+            )
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
