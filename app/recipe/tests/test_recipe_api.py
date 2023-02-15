@@ -228,8 +228,8 @@ class RecipeImageUploadTests(TestCase):
         url = image_upload_url(self.recipe.id)
         with tempfile.NamedTemporaryFile(suffix='.jpg') as ntf:  # suffix is extension we wanna use
             img = Image.new('RGB', (10, 10))
-            img.save(ntf, format='JPEG') # save image in ntf with jpeg format
-            ntf.seek(0) # set the pointer back to the beginning of that file
+            img.save(ntf, format='JPEG')  # save image in ntf with jpeg format
+            ntf.seek(0)  # set the pointer back to the beginning of that file
             # tell django we wanna make multipart form request
             # which means a form that consists of data, by default it actually consist of json object
             res = self.client.post(url, {'image': ntf}, format='multipart')
@@ -244,3 +244,48 @@ class RecipeImageUploadTests(TestCase):
         url = image_upload_url(self.recipe.id)
         res = self.client.post(url, {'image': 'not_image_data'}, format='multipart')
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_filter_recipes_by_tags(self):
+        """test returning recipes with specific tags"""
+        recipe1 = sample_recipe(user=self.user, title="kabab")
+        recipe2 = sample_recipe(user=self.user, title
+        ="tabouleh")
+        tag1 = sample_tag(user=self.user, name="meaty")
+        tag2 = sample_tag(user=self.user, name="vegan")
+        recipe1.tags.add(tag1)
+        recipe2.tags.add(tag2)
+        recipe3 = sample_recipe(user=self.user, title="spicy fish")
+
+        res = self.client.get(
+            RECIPE_URL,
+            # create comma separated list of the ids of objs we wanna filter by then assign it to tags get parameter
+            {'tags': f'{tag1.id}, {tag2.id}'},
+        )
+
+        serializer1 = RecipeSerializer(recipe1)
+        serializer2 = RecipeSerializer(recipe2)
+        serializer3 = RecipeSerializer(recipe3)
+        self.assertIn(serializer1.data, res.data)
+        self.assertIn(serializer2.data, res.data)
+        self.assertNotIn(serializer3.data, res.data)
+
+    def test_filter_recipes_by_ingredients(self):
+        """test returning recipes with specific ingredients"""
+        recipe1 = sample_recipe(user=self.user, title="falafel")
+        recipe2 = sample_recipe(user=self.user, title="shesh")
+        ingredient1 = sample_ingredient(user=self.user, name="Hummus")
+        ingredient2 = sample_ingredient(user=self.user, name="chicken")
+        recipe1.ingredients.add(ingredient1)
+        recipe2.ingredients.add(ingredient2)
+        recipe3 = sample_recipe(user=self.user, title="fattah")
+        res = self.client.get(
+            RECIPE_URL,
+            {'ingredients': f'{ingredient1.id}, {ingredient2.id}'}
+        )
+
+        serializer1 = RecipeSerializer(recipe1)
+        serializer2 = RecipeSerializer(recipe2)
+        serializer3 = RecipeSerializer(recipe3)
+        self.assertIn(serializer1.data, res.data)
+        self.assertIn(serializer2.data, res.data)
+        self.assertNotIn(serializer3.data, res.data)
