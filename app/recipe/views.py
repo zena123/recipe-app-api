@@ -1,5 +1,5 @@
 from rest_framework.decorators import action
-from rest_framework.response import  Response
+from rest_framework.response import Response
 from rest_framework import viewsets, mixins, status
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
@@ -25,7 +25,14 @@ class BaseRecipeAttrViewSet(
 
     def get_queryset(self):
         """return objects for current authenticated user only"""
-        return self.queryset.filter(user=self.request.user).order_by('name')
+        assigned_only = bool(
+            int(self.request.query_params.get('assigned_only', 0))  # 0 will be false if not converted to int
+        )
+        queryset = self.queryset
+        if assigned_only:
+            # return only tags or ingredients assigned to a recipe
+            queryset = queryset.filter(recipe__isnull=False)
+        return queryset.filter(user=self.request.user).order_by('name').distinct()
 
     def perform_create(self, serializer):
         """assign created object to current user"""
@@ -51,7 +58,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
     authentication_classes = (TokenAuthentication,)
     permission_classes = (IsAuthenticated,)
 
-
     def _params_to_ints(self, qs):
         """convert a list of string IDs to a list of integers"""
         return [int(str_id) for str_id in qs.split(',')]
@@ -63,7 +69,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         queryset = self.queryset
         if tags:
             tags_id = self._params_to_ints(tags)
-            queryset = queryset.filter(tags__id__in=tags_id) # django syntax to filter over IDS
+            queryset = queryset.filter(tags__id__in=tags_id)  # django syntax to filter over IDS
         if ingredients:
             ingredients_id = self._params_to_ints(ingredients)
             queryset = queryset.filter(ingredients__id__in=ingredients_id)
@@ -99,4 +105,3 @@ class RecipeViewSet(viewsets.ModelViewSet):
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
         )
-
